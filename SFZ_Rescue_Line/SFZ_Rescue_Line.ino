@@ -48,6 +48,10 @@ const int LineArrayPin = LineArrayPort.pin1();
 * \brief    Globale Variablen und Funktionsprototypen die man hier halt so braucht!
 */
 /*------------------------------------------------------------------------------------------------*/
+struct {
+  uint8_t LineArray;
+  
+} Roboter;
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -60,12 +64,13 @@ const int LineArrayPin = LineArrayPort.pin1();
 /*------------------------------------------------------------------------------------------------*/
 void setup() {
 
-  Aktoren_Setup();
-
-  Anzeige_Setup();
+  Serial.begin(9600);
+  
+  Aktoren_Setup(); 
   
   Sensoren_Setup();
-
+  
+  Anzeige_Setup();
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -77,7 +82,13 @@ void setup() {
 /*------------------------------------------------------------------------------------------------*/
 void loop() {
 
-  GyroOnBoard.update();
+  Serial.print(millis());
+  Serial.println(" - Lese Sensoren!");
+  Sensoren_Update();
+
+  Serial.print(millis());
+  Serial.print(" - Linie: ");
+  Serial.println(Roboter.LineArray,BIN); 
 }
 
 
