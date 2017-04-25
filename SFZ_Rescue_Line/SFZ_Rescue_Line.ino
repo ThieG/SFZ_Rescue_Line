@@ -40,6 +40,8 @@ MeRGBLed RGBLedOnBoard(0, 12);
 /*------------------------------------------------------------------------------------------------*/
 MeGyro GyroOnBoard(0, 0x69);
 
+MePort LineArrayPort(PORT_7);
+const int LineArrayPin = LineArrayPort.pin1();
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -58,15 +60,11 @@ MeGyro GyroOnBoard(0, 0x69);
 /*------------------------------------------------------------------------------------------------*/
 void setup() {
 
-  ServoLenkung.attach(ServoLenkungPin);
-  ServoLenkung.write(SERVO_LENKUNG_MITTE);
+  Aktoren_Setup();
 
-  MotorAntrieb.stop();
-
-  RGBLedOnBoard.setColor(0, 150, 150, 150); /* 0 -> Alle RGBs anschalten, ansonsten 1 bis 12.... */
-  RGBLedOnBoard.show();
-
-  GyroOnBoard.begin();
+  Anzeige_Setup();
+  
+  Sensoren_Setup();
 
 }
 
