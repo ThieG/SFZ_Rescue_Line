@@ -48,10 +48,16 @@ const int LineArrayPin = LineArrayPort.pin1();
 * \brief    Globale Variablen und Funktionsprototypen die man hier halt so braucht!
 */
 /*------------------------------------------------------------------------------------------------*/
-struct {
-  uint8_t LineArray;
+typedef struct RoboterBetriebsDaten {
+  uint8_t In_LineArray;
+
+  int16_t Out_MotorAntriebGeschwindigkeit;
+  int16_t Out_ServoLenkungPosition;
   
-} Roboter;
+  int32_t Int_Abweichung;
+  
+} RoboterBetriebsDaten;
+RoboterBetriebsDaten Roboter;
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -66,7 +72,7 @@ void setup() {
 
   Serial.begin(9600);
   
-  Aktoren_Setup(); 
+  Aktoren_Setup(&Roboter); 
   
   Sensoren_Setup();
   
@@ -83,12 +89,42 @@ void setup() {
 void loop() {
 
   Serial.print(millis());
-  Serial.println(" - Lese Sensoren!");
-  Sensoren_Update();
+  Serial.println(" - Lese die Sensoren!");
+  Sensoren_Update(&Roboter);
 
   Serial.print(millis());
   Serial.print(" - Linie: ");
-  Serial.println(Roboter.LineArray,BIN); 
+  Serial.println(Roboter.In_LineArray, BIN); 
+
+  Roboter.Int_Abweichung =  Abweichung(Roboter.In_LineArray);
 }
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Abweichung von der schwarzen Line
+*
+*            Hier wird die Abweichung von der schwarzen Linie ermittelt, um diese anschliesend 
+*            an den Regler fuer den Lenkausschlag zu geben.
+*            
+* \param           
+*/
+/*------------------------------------------------------------------------------------------------*/
+int32_t Abweichung (uint8_t sensorWert)
+{
+  int32_t result = 0;
+  switch(sensorWert) {
+    case B00000000:
+    case B00111111:
+      break;
+    default:
+      break;
+  }
+
+  return result;
+}
+
+
+ 
+
 
 

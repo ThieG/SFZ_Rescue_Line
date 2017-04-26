@@ -38,13 +38,14 @@ void Sensoren_Setup (void)
 *
 *            Wird von der Arduino loop() Funktion zyklisch aufgerufen um die angeschlossenen Sensoren
 *            ein zu lesen und die Daten bereit zu stellen.
+*            
+* \param    *roboter Referenz zu den Roboter Betriebsdaten.          
 */
 /*------------------------------------------------------------------------------------------------*/
-void Sensoren_Update (void)
+void Sensoren_Update (RoboterBetriebsDaten* roboter)
 {
   GyroOnBoard.update();
-
-  Roboter.LineArray = getLineArray();
+  roboter->In_LineArray = LiesLineArray();
 }
 
 
@@ -53,7 +54,7 @@ void Sensoren_Update (void)
 /*!
 * \brief     Me Line Follower Array
 *
-*            Beispiel Program, wie das Sensor Array Modul angesteuert wird.
+*            Beispiel Program, wie das Sensor Array Modul ausgelsen wird.
 *            
 * \return    Akteuller Wert aller 6 Sensoren als Bitfeld:
 *              - 1 : Sensor sieht schwarz
@@ -62,7 +63,7 @@ void Sensoren_Update (void)
 * \note      Ein Rueckgabewert von 0xFF zeigt, das ein Fehler aufgetreten ist!
 */
 /*------------------------------------------------------------------------------------------------*/
-uint8_t getLineArray()
+uint8_t LiesLineArray()
 {  
   long time_out_flag = 0;
   
