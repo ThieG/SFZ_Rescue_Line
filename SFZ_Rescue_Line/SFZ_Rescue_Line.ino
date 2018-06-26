@@ -15,33 +15,7 @@
 */
 #include  "MeAuriga.h"
 
-
-#define SERVO_LENKUNG_MITTE   90u  /**< Legt die Mittelstellung der Lenkung fest, also Geradeausfahren! */
-#define SERVO_RECHTS_MAX       0u  /**< Legt den maximalen Ausschlag nach rechts fest! */
-#define SERVO_LINKS_MAX      170u  /**< Legt den maximalen Ausschlag nach links fest! */
-
-/*------------------------------------------------------------------------------------------------*/
-/*!
-* \brief    Aktoren 
-*/
-/*------------------------------------------------------------------------------------------------*/
-MeDCMotor MotorAntrieb(M1);
-
-MePort ServoPort(PORT_6);
-int16_t ServoLenkungPin = ServoPort.pin1();
-Servo ServoLenkung;
-
-MeRGBLed RGBLedOnBoard(0, 12);
-
-/*------------------------------------------------------------------------------------------------*/
-/*!
-* \brief    Sensoren
-*/
-/*------------------------------------------------------------------------------------------------*/
-MeGyro GyroOnBoard(0, 0x69);
-
-MePort LineArrayPort(PORT_7);
-const int LineArrayPin = LineArrayPort.pin1();
+#define LOOP_UPDATE_RATE_MS  50
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -54,7 +28,8 @@ typedef struct RoboterBetriebsDaten {
   int16_t Out_MotorAntriebGeschwindigkeit;
   int16_t Out_ServoLenkungPosition;
   
-  int32_t Int_Abweichung;
+  int8_t  In_LineArrayWert;
+  int32_t In_Abweichung;
   
 } RoboterBetriebsDaten;
 RoboterBetriebsDaten Roboter;
@@ -72,7 +47,7 @@ void setup() {
 
   Serial.begin(9600);
   
-  Aktoren_Setup(&Roboter); 
+  Aktoren_Setup(); 
   
   Sensoren_Setup();
   
@@ -86,17 +61,22 @@ void setup() {
 *            Wird durchgehend immer wieder durchlaufen, solange das Arduino-Board eingeschaltet ist.
 */
 /*------------------------------------------------------------------------------------------------*/
-void loop() {
+void loop() 
+{ 
+  unsigned long NaechsterLoop = (millis() + LOOP_UPDATE_RATE_MS);
+  
+  Sensoren_Update();  
+  
+  Roboter.In_LineArrayWert = LiesLineArray();
+  Roboter.In_Abweichung =  Abweichung(Roboter.In_LineArrayWert);
 
-  Serial.print(millis());
-  Serial.println(" - Lese die Sensoren!");
-  Sensoren_Update(&Roboter);
+  SetzeMotoren(1, 0);
+  
+  Aktoren_Update();
+  Anzeige_Update();
 
-  Serial.print(millis());
-  Serial.print(" - Linie: ");
-  Serial.println(Roboter.In_LineArray, BIN); 
-
-  Roboter.Int_Abweichung =  Abweichung(Roboter.In_LineArray);
+  while (NaechsterLoop >= millis()) {};
+  
 }
 
 /*------------------------------------------------------------------------------------------------*/
