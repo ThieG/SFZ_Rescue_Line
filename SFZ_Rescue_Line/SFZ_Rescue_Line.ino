@@ -13,25 +13,30 @@
 * \defgroup RESCUE_LINE     Robocup Rescue Line
 ****************************************************************************************************
 */
-#include  "MeAuriga.h"
+#include "MeAuriga.h"
+#include "SFZ_Rescue_Line.h"
 
 #define LOOP_UPDATE_RATE_MS  50
+
+#define MOTOR_STOP     0
+#define FAHR_N_VORNE   1
+#define FAHR_N_HINTEN  2
+#define DREH_N_RECHTS  3
+#define DREH_N_LINKS   4
+
+LinieFunktion LinieAktionCfg[] = {
+  { B000000, Akt_FahrtGerade,    FAHR_N_VORNE, 100 },
+  { B000001, Akt_DrehtAufStelle, FAHR_N_HINTEN, 150 },
+  { B000010, Akt_Dreht,          DREH_N_LINKS, 255 },
+    
+  { B111111, Akt_KeineAktion, MOTOR_STOP, 0 }  
+};
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
 * \brief    Globale Variablen und Funktionsprototypen die man hier halt so braucht!
 */
 /*------------------------------------------------------------------------------------------------*/
-typedef struct RoboterBetriebsDaten {
-  uint8_t In_LineArray;
-
-  int16_t Out_MotorAntriebGeschwindigkeit;
-  int16_t Out_ServoLenkungPosition;
-  
-  int8_t  In_LineArrayWert;
-  int32_t In_Abweichung;
-  
-} RoboterBetriebsDaten;
 RoboterBetriebsDaten Roboter;
 
 /*------------------------------------------------------------------------------------------------*/
@@ -52,6 +57,8 @@ void setup() {
   Sensoren_Setup();
   
   Anzeige_Setup();
+
+  Roboter.Stat_LineAktFertigFlag = true;
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -63,6 +70,7 @@ void setup() {
 /*------------------------------------------------------------------------------------------------*/
 void loop() 
 { 
+  CallBackFunk LineCallbackFunk;
   unsigned long NaechsterLoop = (millis() + LOOP_UPDATE_RATE_MS);
   
   Sensoren_Update();  
@@ -70,6 +78,13 @@ void loop()
   Roboter.In_LineArrayWert = LiesLineArray();
   Roboter.In_Abweichung =  Abweichung(Roboter.In_LineArrayWert);
 
+  if (Roboter.Stat_LineAktFertigFlag) {
+    LineCallbackFunk = LinieAktionCfg[0].CallBackFunk;  
+    Roboter.Stat_LineAktFertigFlag = LineCallbackFunk(LinieAktionCfg[0].richtung, LinieAktionCfg[0].geschw);
+  } else {
+    Roboter.Stat_LineAktFertigFlag = LineCallbackFunk(LinieAktionCfg[0].richtung, LinieAktionCfg[0].geschw);   
+  }
+  
   SetzeMotoren(1, 0);
   
   Aktoren_Update();
@@ -104,7 +119,30 @@ int32_t Abweichung (uint8_t sensorWert)
 }
 
 
- 
+bool Akt_KeineAktion(int richtung, int geschw)
+{
+
+  return true;
+}
+
+bool Akt_FahrtGerade(int richtung, int geschw)
+{
+
+  return true;
+}
+
+bool Akt_DrehtAufStelle(int richtung, int geschw)
+{
+
+  return true;
+}
+
+bool Akt_Dreht(int richtung, int geschw)
+{
+
+  return true;
+}
+
 
 
 
