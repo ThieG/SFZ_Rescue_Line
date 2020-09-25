@@ -14,8 +14,7 @@ typedef struct RoboterBetriebsDaten {
   int16_t Out_MotorAntriebGeschwindigkeit;
   int16_t Out_ServoLenkungPosition;
   
-  int8_t  In_LineArrayWert;
-  int32_t In_Abweichung;
+  int16_t In_Abweichung;
   
 } RoboterBetriebsDaten;
 

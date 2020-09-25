@@ -29,7 +29,7 @@ void Anzeige_Setup(void)
 {
   
   RGBLedOnBoard.setpin(44);
-  RGBLedOnBoard.setColor(0, 150, 150, 150); /* 0 -> Alle RGBs anschalten, ansonsten 1 bis 12.... */
+  RGBLedOnBoard.setColor(0, 0, 0, 0); /* 0 -> Alle RGBs ausschalten, ansonsten 1 bis 12.... */
   RGBLedOnBoard.show();
   
 }
@@ -43,6 +43,5 @@ void Anzeige_Setup(void)
 /*------------------------------------------------------------------------------------------------*/
 void Anzeige_Update (void)
 {
-   
+  RGBLedOnBoard.show();   
 }
-

@@ -5,7 +5,8 @@
 * \ingroup   RESCUE_LINE
 *
 *            Arduino Software als Beispiel, wie so ein Programm funktionieren und aussehen kann.
-*
+*            
+* \note      Fuer den Auriga muss das "Arduino Mega2560" Board eingestellt werden.  
 ****************************************************************************************************
 */
 /*!
@@ -50,15 +51,29 @@ RoboterBetriebsDaten Roboter;
 /*------------------------------------------------------------------------------------------------*/
 void setup() {
 
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.println(F(" "));
+  Serial.println(F(" ------------------------------------"));
+  Serial.println(F("    _____ ______ ______ "));
+  Serial.println(F("   / ____|  ____|___  / "));
+  Serial.println(F("  | (___ | |__     / /  "));
+  Serial.println(F("   \\___ \\|  __|   / /   "));
+  Serial.println(F("   ____) | |     / /__  "));
+  Serial.println(F("  |_____/|_|    /_____| "));
+  Serial.println(F(" "));
+  Serial.println(F(" ------------------------------------"));
   
+  Serial.println(F("Info: Aktoren Setup..."));
   Aktoren_Setup(); 
-  
+
+  Serial.println(F("Info: Sensoren Setup..."));
   Sensoren_Setup();
-  
+
+  Serial.println(F("Info: Anzeige Setup..."));
   Anzeige_Setup();
 
   Roboter.Stat_LineAktFertigFlag = true;
+  Serial.println(F(" ------------------------------------"));
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -75,8 +90,8 @@ void loop()
   
   Sensoren_Update();  
   
-  Roboter.In_LineArrayWert = LiesLineArray();
-  Roboter.In_Abweichung =  Abweichung(Roboter.In_LineArrayWert);
+ 
+  Roboter.In_Abweichung =  Sensoren_LineAbweichung();
 
   if (Roboter.Stat_LineAktFertigFlag) {
     LineCallbackFunk = LinieAktionCfg[0].CallBackFunk;  
@@ -92,30 +107,6 @@ void loop()
 
   while (NaechsterLoop >= millis()) {};
   
-}
-
-/*------------------------------------------------------------------------------------------------*/
-/*!
-* \brief     Abweichung von der schwarzen Line
-*
-*            Hier wird die Abweichung von der schwarzen Linie ermittelt, um diese anschliesend 
-*            an den Regler fuer den Lenkausschlag zu geben.
-*            
-* \param           
-*/
-/*------------------------------------------------------------------------------------------------*/
-int32_t Abweichung (uint8_t sensorWert)
-{
-  int32_t result = 0;
-  switch(sensorWert) {
-    case B00000000:
-    case B00111111:
-      break;
-    default:
-      break;
-  }
-
-  return result;
 }
 
 
@@ -142,7 +133,3 @@ bool Akt_Dreht(int richtung, int geschw)
 
   return true;
 }
-
-
-
-
