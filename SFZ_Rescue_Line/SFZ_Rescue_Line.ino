@@ -16,22 +16,17 @@
 */
 #include "MeAuriga.h"
 #include "SFZ_Rescue_Line.h"
+#include "MeRGBLineFollower.h"
 
-#define LOOP_UPDATE_RATE_MS  50
+#define LOOP_UPDATE_RATE_MS 50
 
-#define MOTOR_STOP     0
-#define FAHR_N_VORNE   1
-#define FAHR_N_HINTEN  2
-#define DREH_N_RECHTS  3
-#define DREH_N_LINKS   4
-
-LinieFunktion LinieAktionCfg[] = {
-  { B000000, Akt_FahrtGerade,    FAHR_N_VORNE, 100 },
-  { B000001, Akt_DrehtAufStelle, FAHR_N_HINTEN, 150 },
-  { B000010, Akt_Dreht,          DREH_N_LINKS, 255 },
-    
-  { B111111, Akt_KeineAktion, MOTOR_STOP, 0 }  
-};
+/*----------------------------------------------------------------------------*/
+/*!
+* \brief    Sring Objects for Test Communication
+*/
+/*----------------------------------------------------------------------------*/
+String meinTextVonDerKonsole = "";
+unsigned int meinTextLaenge = meinTextVonDerKonsole.length();
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -39,6 +34,25 @@ LinieFunktion LinieAktionCfg[] = {
 */
 /*------------------------------------------------------------------------------------------------*/
 RoboterBetriebsDaten Roboter;
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief    Bedientasten
+*/
+/*------------------------------------------------------------------------------------------------*/
+Me4Button myButtons(PORT_9);
+uint8_t keyPressedPrevious;
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief    Linefollower PID Regelparameter und Konstanten!
+*/
+/*------------------------------------------------------------------------------------------------*/
+float PID_kp = 1.0; 
+float PID_ki = 0.0;
+float PID_kd = 0.0;
+float PID_IntegralValue;
+float PID_DerivativeValue;
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -53,7 +67,7 @@ void setup() {
 
   Serial.begin(115200);
   Serial.println(F(" "));
-  Serial.println(F(" ------------------------------------"));
+  Serial.println(F("------------------------------------"));
   Serial.println(F("    _____ ______ ______ "));
   Serial.println(F("   / ____|  ____|___  / "));
   Serial.println(F("  | (___ | |__     / /  "));
@@ -61,19 +75,35 @@ void setup() {
   Serial.println(F("   ____) | |     / /__  "));
   Serial.println(F("  |_____/|_|    /_____| "));
   Serial.println(F(" "));
-  Serial.println(F(" ------------------------------------"));
+  Serial.println(F("------------------------------------"));
   
-  Serial.println(F("Info: Aktoren Setup..."));
+  Serial.println(F("INFO: Aktoren Setup..."));
   Aktoren_Setup(); 
-
-  Serial.println(F("Info: Sensoren Setup..."));
+  Serial.println(F("------------------------------------"));
+  Serial.println(F("INFO: Sensoren Setup..."));
   Sensoren_Setup();
-
-  Serial.println(F("Info: Anzeige Setup..."));
+  Serial.println(F("------------------------------------"));
+  Serial.println(F("INFO: Anzeige Setup..."));
   Anzeige_Setup();
+  Serial.println(F("------------------------------------"));
+  
+  Roboter.Out_MotorAntriebGeschwindigkeit = 60;
+  
+  Roboter.Out_RGBSensorFarbe = RGB_COLOUR_GREEN;
+  Sensoren_LineAendereFarbe(Roboter.Out_RGBSensorFarbe);
 
+  Roboter.Out_RGBEmpfindlichkeit = 0.3;
+  Sensoren_LineAendereEmpfindlichkeit(Roboter.Out_RGBEmpfindlichkeit);
+  
   Roboter.Stat_LineAktFertigFlag = true;
-  Serial.println(F(" ------------------------------------"));
+  Roboter.Stat_EnableSerialLog = 0;
+  Roboter.Stat_LoopCounter = 0u;
+  Roboter.Stat_LoopDurationMax = 0u;
+
+  PID_IntegralValue = (float)Roboter.Out_MotorAntriebGeschwindigkeit;
+  PID_DerivativeValue = 0.0;
+  
+  delay(100);
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -85,51 +115,219 @@ void setup() {
 /*------------------------------------------------------------------------------------------------*/
 void loop() 
 { 
-  CallBackFunk LineCallbackFunk;
-  unsigned long NaechsterLoop = (millis() + LOOP_UPDATE_RATE_MS);
+  static unsigned long NaechsterLoop = LOOP_UPDATE_RATE_MS;
   
-  Sensoren_Update();  
+  do {
+    Sensoren_Update();    
+  } while (NaechsterLoop >= millis());
+  NaechsterLoop = (millis() + LOOP_UPDATE_RATE_MS);
   
- 
-  Roboter.In_Abweichung =  Sensoren_LineAbweichung();
-
-  if (Roboter.Stat_LineAktFertigFlag) {
-    LineCallbackFunk = LinieAktionCfg[0].CallBackFunk;  
-    Roboter.Stat_LineAktFertigFlag = LineCallbackFunk(LinieAktionCfg[0].richtung, LinieAktionCfg[0].geschw);
-  } else {
-    Roboter.Stat_LineAktFertigFlag = LineCallbackFunk(LinieAktionCfg[0].richtung, LinieAktionCfg[0].geschw);   
-  }
+  uint8_t taste = BedienTasten_Update();
   
-  SetzeMotoren(1, 0);
+  KonsoleCmd_Update();
+      
+  // Test_LineSensor();
+  Test_FollowLine();
+  
   
   Aktoren_Update();
   Anzeige_Update();
-
-  while (NaechsterLoop >= millis()) {};
+ 
+  Roboter.Stat_LoopCounter++;
   
 }
 
-
-bool Akt_KeineAktion(int richtung, int geschw)
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Linenfolger Test Program
+*
+*            Hiermit werden die RGB LEDs zyklisch umgeschalten und die ADC Werte an den 
+*            Seriellen Plotter geschrieben!
+*/
+/*------------------------------------------------------------------------------------------------*/
+void Test_FollowLine(void)
 {
+  static bool writeLabels = true;
+  
+  Roboter.In_Abweichung =  Sensoren_LineAbweichung();
 
-  return true;
+  PID_IntegralValue =  PID_IntegralValue + Roboter.In_Abweichung;
+  PID_DerivativeValue = Roboter.In_Abweichung - Roboter.In_LetzteAbweichung;
+  int16_t PID_MotorGeschwindigkeit = (PID_kp * Roboter.In_Abweichung) + (PID_ki * PID_IntegralValue) + (PID_kd * PID_DerivativeValue);
+
+  int16_t rightSpeed = Roboter.Out_MotorAntriebGeschwindigkeit + PID_MotorGeschwindigkeit;
+  int16_t leftSpeed  = -1 * (Roboter.Out_MotorAntriebGeschwindigkeit - PID_MotorGeschwindigkeit);
+  
+  Roboter.In_LetzteAbweichung = Roboter.In_Abweichung;
+  
+  Aktoren_SetSpeed(leftSpeed, rightSpeed);
+  
+  if (Roboter.Stat_EnableSerialLog != 0) {
+    if (writeLabels) {
+      Serial.println("Abweichung, Links, Rechts");
+      writeLabels = false;    
+    } else {
+      Serial.print(Roboter.In_Abweichung);
+      Serial.print(",");
+      Serial.print(leftSpeed);
+      Serial.print(",");
+      Serial.println(rightSpeed);
+    }
+  } else {
+    writeLabels = true;     
+  }
 }
 
-bool Akt_FahrtGerade(int richtung, int geschw)
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Liniensensor Test Funktion
+*
+*            Hiermit werden die RGB LEDs zyklisch umgeschalten und die ADC Werte an den 
+*            Seriellen Plotter geschrieben!
+*/
+/*------------------------------------------------------------------------------------------------*/
+void Test_LineSensor(void) 
 {
-
-  return true;
+  static bool writeLabels = true;
+  
+  if (writeLabels) {
+    Serial.println("Sensor,RGB_1,RGB_2,RGB_3,RGB_4");
+    writeLabels = false;    
+  } else {
+    if (Roboter.Stat_EnableSerialLog != 0) {
+      Serial.print(Roboter.Out_RGBSensorFarbe * 20u);
+      Serial.print(",");
+      Serial.print(Sensoren_LineADCWert(1));
+      Serial.print(",");
+      Serial.print(Sensoren_LineADCWert(2));
+      Serial.print(",");
+      Serial.print(Sensoren_LineADCWert(3));
+      Serial.print(",");
+      Serial.println(Sensoren_LineADCWert(4));
+    }
+  }
+    
+  if ((Roboter.Stat_LoopCounter % 100) == 0u) {
+    Sensoren_LineAendereFarbe(Roboter.Out_RGBSensorFarbe);
+    if (Roboter.Out_RGBSensorFarbe >= RGB_COLOUR_BLUE) {
+      Roboter.Out_RGBSensorFarbe = RGB_COLOUR_RED;
+    } else {
+      Roboter.Out_RGBSensorFarbe++;
+    }
+  }
 }
 
-bool Akt_DrehtAufStelle(int richtung, int geschw)
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Bedientasten Einlesen
+* 
+* \return    Gibt KEY_1 ... KEY_4 zurueck wenn die Taste gedrueckt wird, ansosnten KEY_NULL.
+*/
+/*------------------------------------------------------------------------------------------------*/
+uint8_t BedienTasten_Update (void)
 {
+  uint8_t curKeyState;
+  uint8_t keyPressed = myButtons.pressed();
+  
+  if (keyPressedPrevious != keyPressed) {
+    curKeyState = keyPressed;
+  } else {
+    curKeyState = KEY_NULL;  
+  }
 
-  return true;
+  keyPressedPrevious = keyPressed;
+
+  return curKeyState;
 }
 
-bool Akt_Dreht(int richtung, int geschw)
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Konsolen Kommandoparser 
+*/
+/*------------------------------------------------------------------------------------------------*/
+void KonsoleCmd_Update(void)
 {
+  while(Serial.available()) {
+     char inChar = Serial.read();
+     meinTextVonDerKonsole += inChar;  
+  }
+  int meinLetztesZeichen = (meinTextVonDerKonsole.length() - 1);
+  if (meinTextVonDerKonsole.charAt(meinLetztesZeichen) == '\n') {
+    
+    /*-------------------------------------------------*/
+    /* Motorgrund Geschwindigkeit setzen               */
+    /*-------------------------------------------------*/    
+    if (meinTextVonDerKonsole.startsWith("set geschw ")) {
+      String myString = meinTextVonDerKonsole.substring(11);
+      Serial.println("----------------------------------");
+      Roboter.Out_MotorAntriebGeschwindigkeit = myString.toInt();
+      
+      Serial.print("INFO: Set Motorgeschwindigkeit to: "); 
+      Serial.println(Roboter.Out_MotorAntriebGeschwindigkeit);
 
-  return true;
+    /*-------------------------------------------------*/
+    /* RGB Empfindlichkeit                             */
+    /*-------------------------------------------------*/
+    } else if (meinTextVonDerKonsole.startsWith("set empf ")) {
+      String myString = meinTextVonDerKonsole.substring(9);
+      Serial.println("----------------------------------");
+      Roboter.Out_RGBEmpfindlichkeit = myString.toFloat();
+      Sensoren_LineAendereEmpfindlichkeit(Roboter.Out_RGBEmpfindlichkeit);
+      
+      Serial.print("INFO: Set RGB Sensor Empfindlichkeit to: "); 
+      Serial.println(Roboter.Out_RGBEmpfindlichkeit);
+
+    /*-------------------------------------------------*/
+    /* Proportionalfaktor kp                           */
+    /*-------------------------------------------------*/
+    } else if (meinTextVonDerKonsole.startsWith("set kp ")) {
+      String myString = meinTextVonDerKonsole.substring(7);
+      Serial.println("----------------------------------");
+      PID_kp = myString.toFloat();
+            
+      Serial.print("INFO: Set kp Faktor to: "); 
+      Serial.println(PID_kp);
+
+    /*-------------------------------------------------*/
+    /* Enable/Disable log output                       */
+    /*-------------------------------------------------*/
+    } else if (meinTextVonDerKonsole.startsWith("log ")) {
+      String myString = meinTextVonDerKonsole.substring(4);      
+      Roboter.Stat_EnableSerialLog = myString.toInt();
+
+      /* Hier keinen Ausgabe mehr, da ansonsten die Labels unter Umstaenden nicht korrekt sein koennten! */           
+    /*-------------------------------------------------*/
+    /* help                                            */
+    /*-------------------------------------------------*/      
+    }  else if (meinTextVonDerKonsole.startsWith("show")) {      
+      Serial.println("----------------------------------");      
+                       
+      
+      Serial.print("INFO: Max Loop Dauer: "); 
+      Serial.println(Roboter.Stat_LoopDurationMax);    
+      Serial.print("INFO: Motorgeschwindigkeit: "); 
+      Serial.println(Roboter.Out_MotorAntriebGeschwindigkeit);            
+      Serial.print("INFO: RGB Sensor Empfindlichkeit: "); 
+      Serial.println(Roboter.Out_RGBEmpfindlichkeit);
+      Serial.print("INFO: kp Faktor: "); 
+      Serial.println(PID_kp);
+      Serial.print("INFO: ki Faktor: "); 
+      Serial.println(PID_ki);
+      Serial.print("INFO: kd Faktor: "); 
+      Serial.println(PID_kd);
+
+    /*-------------------------------------------------*/
+    /* Enable/Disable log output                       */
+    /*-------------------------------------------------*/
+    } else if (meinTextVonDerKonsole.startsWith("help")) {      
+      Serial.println("----------------------------------");
+      Serial.println("HELP: set geschw x  - Setzt die Motorgeschwindigkeit auf den Wert x");
+      Serial.println("HELP: set empf x.xx - Setzt die RGB Sensor Empfindlichkeit auf den Wert x.xx");
+      Serial.println("HELP: set kp x.xx   - Setzt den kp auf den Wert x.xx");
+      Serial.println("HELP: log x         - Startet(1), stoppt(0) die serielle Ausgabe");
+
+    }
+           
+    meinTextVonDerKonsole = "";
+  }
 }

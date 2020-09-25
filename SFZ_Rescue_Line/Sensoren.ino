@@ -15,12 +15,15 @@
 
 #include "MeRGBLineFollower.h"
 
+#define ABSTAND_MAX_CM  100
+
 /*------------------------------------------------------------------------------------------------*/
 /*!
 * \brief    Globale Variablen und Funktionsprototypen die man hier halt so braucht!
 */
 /*------------------------------------------------------------------------------------------------*/
-MeRGBLineFollower RGBLineFollower(PORT_9, ADDRESS2);
+MeRGBLineFollower RGBLineFollower(PORT_7, ADDRESS2);
+MeUltrasonicSensor AbstandsSensor(PORT_8);
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -30,10 +33,13 @@ MeRGBLineFollower RGBLineFollower(PORT_9, ADDRESS2);
 */
 /*------------------------------------------------------------------------------------------------*/
 typedef struct SensorDaten {
-  uint8_t LineArray;
-
+  uint8_t  LineArray;
+  uint16_t AbstandCm;
+  long     AbstandUpdateTime;
+  
 } SensorDaten;
 SensorDaten Sensoren;
+
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
@@ -45,10 +51,42 @@ SensorDaten Sensoren;
 /*------------------------------------------------------------------------------------------------*/
 void Sensoren_Setup (void)
 {
+  Serial.println(F("INFO: RGB Linefollower started..."));
   RGBLineFollower.begin();
   RGBLineFollower.updataAllSensorValue();
-  RGBLineFollower.setRGBColour(RGB_COLOUR_RED);
+
+  /* Set dafault Werte */
+  RGBLineFollower.setRGBColour(RGB_COLOUR_GREEN);
   RGBLineFollower.setKp(0.3);
+
+  /* Initale Messung */
+  Sensoren.AbstandCm = AbstandsSensor.distanceCm(ABSTAND_MAX_CM);
+  long MessDauer = AbstandsSensor.measure();
+  Serial.print("INFO: Abstandsmessung braucht ca. ");
+  Serial.print(MessDauer);
+  Serial.println("us");
+}
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Linefollower Messfarbe Aendern     
+* 
+* \param     neueFarbe RGB_COLOUR_RED(1), RGB_COLOUR_GREEN(2), RGB_COLOUR_BLUE(3)          
+*/
+/*------------------------------------------------------------------------------------------------*/
+void Sensoren_LineAendereFarbe(uint8_t neueFarbe)
+{
+    RGBLineFollower.setRGBColour(neueFarbe);
+}
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
+* \brief     Linefollower Empfindlichkeit Aendern     
+*/
+/*------------------------------------------------------------------------------------------------*/
+void Sensoren_LineAendereEmpfindlichkeit(float empfindlichkeit)
+{
+    RGBLineFollower.setKp(empfindlichkeit);  
 }
 
 /*------------------------------------------------------------------------------------------------*/
@@ -80,9 +118,9 @@ uint8_t Sensoren_LineAktuellerZustand(void)
 * \brief     Linefollower Sensor ADC Werte     
 */
 /*------------------------------------------------------------------------------------------------*/
-int8_t Sensoren_LineAbweichung(int8_t sensorNum)
+uint8_t Sensoren_LineADCWert(int8_t sensorNum)
 {
-    int8_t adcResult = 0u;
+    uint8_t adcResult = 0u;
     
     switch (sensorNum) {
         case 1:
@@ -104,6 +142,16 @@ int8_t Sensoren_LineAbweichung(int8_t sensorNum)
 
 /*------------------------------------------------------------------------------------------------*/
 /*!
+* \brief     Abstandswerte in cm    
+*/
+/*------------------------------------------------------------------------------------------------*/
+uint16_t Sensoren_AbstandCm(void)
+{
+  return Sensoren.AbstandCm;
+}
+
+/*------------------------------------------------------------------------------------------------*/
+/*!
 * \brief     Sensoren Update
 *
 *            Wird von der Arduino loop() Funktion zyklisch aufgerufen um die angeschlossenen Sensoren
@@ -113,4 +161,9 @@ int8_t Sensoren_LineAbweichung(int8_t sensorNum)
 void Sensoren_Update (void)
 {
     RGBLineFollower.loop();
+    
+    if((millis() - Sensoren.AbstandUpdateTime) > 10) {
+        Sensoren.AbstandUpdateTime = millis();
+        Sensoren.AbstandCm = AbstandsSensor.distanceCm(ABSTAND_MAX_CM);
+    }
 }
