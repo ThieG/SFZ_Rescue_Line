@@ -6,7 +6,8 @@
 *
 *            Arduino Software als Beispiel, wie so ein Programm funktionieren und aussehen kann.
 *            
-* \note      Fuer den Auriga muss das "Arduino Mega2560" Board eingestellt werden.  
+* \note      Fuer den Auriga muss das "Arduino Mega2560" Board eingestellt und
+*            das "MeAuriga.h" File includiert werden.
 ****************************************************************************************************
 */
 /*!
@@ -86,6 +87,7 @@ void setup() {
   Serial.println(F("INFO: Anzeige Setup..."));
   Anzeige_Setup();
   Serial.println(F("------------------------------------"));
+  Serial.println(F("INFO: Tippe help "));
   
   Roboter.Out_MotorAntriebGeschwindigkeit = 60;
   
@@ -255,7 +257,7 @@ void KonsoleCmd_Update(void)
   if (meinTextVonDerKonsole.charAt(meinLetztesZeichen) == '\n') {
     
     /*-------------------------------------------------*/
-    /* Motorgrund Geschwindigkeit setzen               */
+    /* Motor Grundgeschwindigkeit setzen               */
     /*-------------------------------------------------*/    
     if (meinTextVonDerKonsole.startsWith("set geschw ")) {
       String myString = meinTextVonDerKonsole.substring(11);
@@ -295,7 +297,9 @@ void KonsoleCmd_Update(void)
       String myString = meinTextVonDerKonsole.substring(4);      
       Roboter.Stat_EnableSerialLog = myString.toInt();
 
-      /* Hier keinen Ausgabe mehr, da ansonsten die Labels unter Umstaenden nicht korrekt sein koennten! */           
+      /* Hier keinen Ausgabe mehr, da ansonsten die Labels im Seriellen Plotter */
+      /* unter Umstaenden nicht korrekt sein koennten! */  
+               
     /*-------------------------------------------------*/
     /* help                                            */
     /*-------------------------------------------------*/      
@@ -321,6 +325,7 @@ void KonsoleCmd_Update(void)
     /*-------------------------------------------------*/
     } else if (meinTextVonDerKonsole.startsWith("help")) {      
       Serial.println("----------------------------------");
+      Serial.println("HELP: show          - Gibt die aktuellen Robotereinstellungen aus");
       Serial.println("HELP: set geschw x  - Setzt die Motorgeschwindigkeit auf den Wert x");
       Serial.println("HELP: set empf x.xx - Setzt die RGB Sensor Empfindlichkeit auf den Wert x.xx");
       Serial.println("HELP: set kp x.xx   - Setzt den kp auf den Wert x.xx");

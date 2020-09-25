@@ -9,6 +9,10 @@
 *             - Me Color Sensor (http://learn.makeblock.com/en/me-color-sensor-v1/)
 *             - Onboard Gyro Sensor
 *             - Ultraschall Abstands Sensor (http://learn.makeblock.com/en/me-ultrasonic-sensor/)
+*             
+* \note      Bei der original MeUltrasonicSensor.cpp wird der timeout (ABSTAND_MAX_CM) nicht
+*            mehr verwendet und ist somit unwirksam. Wer das haben möchte muss eben die alte 
+*            Version nehmen!
 *
 ****************************************************************************************************
 */
@@ -60,9 +64,13 @@ void Sensoren_Setup (void)
   RGBLineFollower.setKp(0.3);
 
   /* Initale Messung */
+  Serial.println(F("INFO: Ultraschall Sensor..."));
   Sensoren.AbstandCm = AbstandsSensor.distanceCm(ABSTAND_MAX_CM);
   long MessDauer = AbstandsSensor.measure();
-  Serial.print("INFO: Abstandsmessung braucht ca. ");
+  Serial.print("INFO: Bei einem Abstand von ");
+  Serial.print(Sensoren.AbstandCm);
+  Serial.print("cm ");
+  Serial.print("dauert die Mssung ca. ");
   Serial.print(MessDauer);
   Serial.println("us");
 }

@@ -19,8 +19,11 @@ Beispiel für den Robocup Rescue Line Wettbewerb
    Dieser Liniensensor befindet sich im Schülerforschungszentrum (SFZ) noch in der Testphase!
    
  * [Me 4 Button](http://learn.makeblock.com/en/me-4-button/)
+ 
  * [Me Ultrasonic Sensor](http://learn.makeblock.com/en/me-ultrasonic-sensor/)
  
+   Bei der original MeUltrasonicSensor.cpp wird der timeout (ABSTAND_MAX_CM) nicht
+   mehr verwendet und ist somit unwirksam. Wer das haben möchte muss eben die alte Version nehmen!
  
 ## Arduino - Software
 
